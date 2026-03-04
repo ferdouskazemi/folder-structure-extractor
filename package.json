@@ -2,7 +2,7 @@
   "name": "folder-structure-extractor",
   "displayName": "Folder Structure Extractor",
   "description": "Right-click any folder to generate a beautiful tree structure",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "publisher": "FerdousKazemi",
   "icon": "icon.png",
   "engines": {
