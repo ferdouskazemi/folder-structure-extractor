@@ -65,13 +65,21 @@ function renderPlain(nodes: TreeNode[], prefix = ""): string {
   return out;
 }
 
-function buildWebview(panel: vscode.WebviewPanel, folderName: string, withIcons: string, noIcons: string) {
-  const escFolderName = folderName.replace(/'/g, "\\'");
+function buildWebview(
+  panel: vscode.WebviewPanel,
+  folderName: string,
+  withIcons: string,
+  noIcons: string
+) {
+  const withIconsFull = "📦" + folderName + "\n" + withIcons;
+  const noIconsFull   = "📦" + folderName + "\n" + noIcons;
+
   panel.webview.html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
 <title>Folder Structure</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -113,7 +121,6 @@ function buildWebview(panel: vscode.WebviewPanel, folderName: string, withIcons:
   }
   .btn-copy { background: #238636; color: #fff; }
   .btn-copy:hover { background: #2ea043; transform: translateY(-1px); }
-  .btn-copy:active { transform: translateY(0); }
   .btn-toggle { background: #21262d; color: #e6edf3; border: 1px solid #30363d; }
   .btn-toggle:hover { background: #30363d; transform: translateY(-1px); }
   .btn-toggle.active { background: #388bfd22; border-color: #388bfd; color: #58a6ff; }
@@ -183,22 +190,36 @@ function buildWebview(panel: vscode.WebviewPanel, folderName: string, withIcons:
     <span class="tree-label" id="treeLabel">with icons</span>
   </div>
   <pre id="treeOutput"><span class="root-line">📦${folderName}</span>
-${withIcons.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</pre>
+${withIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</pre>
 </div>
 <div class="toast" id="toast">✅ Copied to clipboard!</div>
+
 <script>
-  const dataIcons = ${JSON.stringify("📦" + folderName + "\n" + withIcons)};
-  const dataPlain = ${JSON.stringify("📦" + folderName + "\n" + noIcons)};
-  const iconHtml  = ${JSON.stringify(withIcons.replace(/</g,"&lt;").replace(/>/g,"&gt;"))};
-  const plainHtml = ${JSON.stringify(noIcons.replace(/</g,"&lt;").replace(/>/g,"&gt;"))};
+  const vscode = acquireVsCodeApi();
+  const dataIcons = ${JSON.stringify(withIconsFull)};
+  const dataPlain = ${JSON.stringify(noIconsFull)};
+  const iconHtml  = ${JSON.stringify(withIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"))};
+  const plainHtml = ${JSON.stringify(noIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"))};
+  const rootName  = ${JSON.stringify(folderName)};
   let iconsOn = true;
+
+  // Listen for copy confirmation from extension
+  window.addEventListener('message', (event) => {
+    if (event.data.type === 'copied') {
+      const btn = document.getElementById('copyBtn');
+      btn.innerHTML = '<span>✅</span><span>Copied!</span>';
+      setTimeout(() => { btn.innerHTML = '<span>📋</span><span>Copy</span>'; }, 2000);
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+  });
 
   function toggleIcons() {
     iconsOn = !iconsOn;
     const pre = document.getElementById('treeOutput');
     const btn = document.getElementById('toggleBtn');
-    const rootSpan = '<span class="root-line">' + (iconsOn ? '📦' : '📦') + '${escFolderName}</span>\\n';
-    pre.innerHTML = rootSpan + (iconsOn ? iconHtml : plainHtml);
+    pre.innerHTML = '<span class="root-line">📦' + rootName + '</span>\\n' + (iconsOn ? iconHtml : plainHtml);
     btn.classList.toggle('active', iconsOn);
     document.getElementById('toggleIcon').textContent = iconsOn ? '✨' : '🚫';
     document.getElementById('toggleText').textContent = iconsOn ? 'Icons On' : 'Icons Off';
@@ -206,19 +227,20 @@ ${withIcons.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</pre>
   }
 
   function copyTree() {
-    const text = iconsOn ? dataIcons : dataPlain;
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = document.getElementById('copyBtn');
-      btn.innerHTML = '<span>✅</span><span>Copied!</span>';
-      setTimeout(() => { btn.innerHTML = '<span>📋</span><span>Copy</span>'; }, 2000);
-      const toast = document.getElementById('toast');
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2500);
-    });
+    // Send message to extension to copy via VS Code API (avoids clipboard issue in webview)
+    vscode.postMessage({ type: 'copy', text: iconsOn ? dataIcons : dataPlain });
   }
 </script>
 </body>
 </html>`;
+
+  // Handle copy message from webview
+  panel.webview.onDidReceiveMessage(async (message) => {
+    if (message.type === "copy") {
+      await vscode.env.clipboard.writeText(message.text);
+      panel.webview.postMessage({ type: "copied" });
+    }
+  });
 }
 
 async function generate(uri: vscode.Uri | undefined, depth: number) {
@@ -258,7 +280,10 @@ async function generate(uri: vscode.Uri | undefined, depth: number) {
     "folderStructure",
     `📁 ${folderName} — ${depthLabel}`,
     vscode.ViewColumn.Beside,
-    { enableScripts: true }
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true
+    }
   );
 
   buildWebview(panel, folderName, renderIcons(nodes), renderPlain(nodes));
