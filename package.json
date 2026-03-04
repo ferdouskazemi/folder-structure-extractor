@@ -10,7 +10,7 @@
   "activationEvents": [],
   "repository": {
   "type": "git",
-  "url": "https://github.com/YOUR_USERNAME/folder-structure-generator"
+  "url": "https://github.com/ferdouskazemi/folder-structure-extractor.git"
 },
   "main": "./out/extension.js",
   "contributes": {
