@@ -1,0 +1,96 @@
+{
+  "name": "folder-structure-generator",
+  "displayName": "Folder Structure Generator",
+  "description": "Right-click any folder to generate a beautiful tree structure",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "folderStructure.generateLevel1",
+        "title": "Top Level Only (1 level)"
+      },
+      {
+        "command": "folderStructure.generateLevel2",
+        "title": "2 Levels Deep"
+      },
+      {
+        "command": "folderStructure.generateLevel3",
+        "title": "3 Levels Deep"
+      },
+      {
+        "command": "folderStructure.generateCustom",
+        "title": "Custom Depth..."
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "folderStructure.submenu",
+          "group": "2_workspace@1",
+          "when": "explorerResourceIsFolder"
+        }
+      ],
+      "folderStructure.submenu": [
+        {
+          "command": "folderStructure.generateLevel1",
+          "group": "navigation@1"
+        },
+        {
+          "command": "folderStructure.generateLevel2",
+          "group": "navigation@2"
+        },
+        {
+          "command": "folderStructure.generateLevel3",
+          "group": "navigation@3"
+        },
+        {
+          "command": "folderStructure.generateCustom",
+          "group": "navigation@4"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "folderStructure.submenu",
+        "label": "📁 Generate Folder Structure"
+      }
+    ],
+    "configuration": {
+      "title": "Folder Structure Generator",
+      "properties": {
+        "folderStructure.ignore": {
+          "type": "array",
+          "default": ["node_modules", ".git", "dist", "build", ".next", "out", ".cache", "coverage"],
+          "description": "Folders/files to ignore when generating structure"
+        },
+        "folderStructure.showFiles": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include files in the tree (not just folders)"
+        },
+        "folderStructure.outputTarget": {
+          "type": "string",
+          "enum": ["clipboard", "newFile", "both"],
+          "default": "both",
+          "description": "Where to output the generated structure"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.0.0"
+  }
+}
