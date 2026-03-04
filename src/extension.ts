@@ -14,6 +14,44 @@ interface TreeNode {
   children?: TreeNode[];
 }
 
+// ============================================================
+// ICON THEME DEFINITIONS
+// ============================================================
+interface IconTheme {
+  name: string;
+  folder: string;
+  file: string;
+  root: string;
+}
+
+const iconThemes: Record<string, IconTheme> = {
+  emoji: { name: "Emoji", folder: "📂", file: "📜", root: "📦" },
+  minimal: { name: "Minimal", folder: "📁", file: "📄", root: "🗃️" },
+  outline: { name: "Outline", folder: "📂", file: "📄", root: "🗂️" },
+  vscode: { name: "VS Code", folder: "📁", file: "📃", root: "📦" },
+  none: { name: "None", folder: "", file: "", root: "📦" }
+};
+
+// ============================================================
+// CONNECTOR STYLE DEFINITIONS
+// ============================================================
+interface ConnectorStyle {
+  name: string;
+  branch: string;    // Middle item connector
+  last: string;      // Last item connector
+  vertical: string;  // Vertical line for continuation
+  indent: string;    // Indentation for no-connector style
+}
+
+const connectorStyles: Record<string, ConnectorStyle> = {
+  classic: { name: "Classic", branch: "┣ ", last: "┗ ", vertical: "┃ ", indent: "  " },
+  ascii: { name: "ASCII", branch: "|-- ", last: "`-- ", vertical: "|   ", indent: "    " },
+  dotted: { name: "Dotted", branch: "│· ", last: "╰· ", vertical: "│  ", indent: "   " },
+  rounded: { name: "Rounded", branch: "├─ ", last: "╰─ ", vertical: "│  ", indent: "   " },
+  bold: { name: "Bold", branch: "┣ ", last: "┗ ", vertical: "┃ ", indent: "  " },
+  none: { name: "None", branch: "  ", last: "  ", vertical: "  ", indent: "    " }
+};
+
 function buildTree(dirPath: string, options: TreeOptions, currentDepth = 0): TreeNode[] {
   if (currentDepth >= options.maxDepth) return [];
   let entries: fs.Dirent[];
@@ -40,27 +78,25 @@ function buildTree(dirPath: string, options: TreeOptions, currentDepth = 0): Tre
   return nodes;
 }
 
-function renderIcons(nodes: TreeNode[], prefix = ""): string {
+function renderTree(
+  nodes: TreeNode[],
+  style: ConnectorStyle,
+  theme: IconTheme,
+  withIcons: boolean,
+  prefix = ""
+): string {
   let out = "";
   nodes.forEach((node, i) => {
     const last = i === nodes.length - 1;
-    const branch = last ? "┗ " : "┣ ";
-    const childPfx = last ? "  " : "┃ ";
-    const icon = node.isDir ? "📂" : "📜";
-    out += `${prefix}${branch}${icon}${node.name}\n`;
-    if (node.children?.length) out += renderIcons(node.children, prefix + childPfx);
-  });
-  return out;
-}
-
-function renderPlain(nodes: TreeNode[], prefix = ""): string {
-  let out = "";
-  nodes.forEach((node, i) => {
-    const last = i === nodes.length - 1;
-    const branch = last ? "┗ " : "┣ ";
-    const childPfx = last ? "  " : "┃ ";
-    out += `${prefix}${branch}${node.name}${node.isDir ? "/" : ""}\n`;
-    if (node.children?.length) out += renderPlain(node.children, prefix + childPfx);
+    const branch = last ? style.last : style.branch;
+    const childPfx = last ? style.indent : style.vertical;
+    const icon = withIcons ? (node.isDir ? theme.folder : theme.file) : "";
+    const spacer = withIcons && icon ? " " : "";
+    const dirMarker = !withIcons && node.isDir ? "/" : "";
+    out += `${prefix}${branch}${icon}${spacer}${node.name}${dirMarker}\n`;
+    if (node.children?.length) {
+      out += renderTree(node.children, style, theme, withIcons, prefix + childPfx);
+    }
   });
   return out;
 }
@@ -80,14 +116,16 @@ function getNonce(): string {
 function buildWebview(
   panel: vscode.WebviewPanel,
   folderName: string,
-  withIcons: string,
-  noIcons: string
+  nodes: TreeNode[]
 ) {
-  const csp   = panel.webview.cspSource;
-  const nonce = getNonce(); // unique per panel open
+  const csp = panel.webview.cspSource;
+  const nonce = getNonce();
 
-  const withIconsFull = "📦" + folderName + "\n" + withIcons;
-  const noIconsFull   = "📦" + folderName + "\n" + noIcons;
+  // Build icon themes and connector styles data for the webview
+  const themesData = JSON.stringify(iconThemes);
+  const stylesData = JSON.stringify(connectorStyles);
+  const nodesData = JSON.stringify(nodes);
+  const folderNameData = JSON.stringify(folderName);
 
   panel.webview.html = `<!DOCTYPE html>
 <html lang="en">
@@ -121,7 +159,88 @@ function buildWebview(
     font-weight: 700;
     color: #58a6ff;
   }
-  .controls { display: flex; gap: 10px; }
+  .controls { 
+    display: flex; 
+    gap: 10px; 
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .dropdown-wrapper {
+    position: relative;
+  }
+  .dropdown-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #30363d;
+    background: #21262d;
+    color: #e6edf3;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-width: 140px;
+    justify-content: space-between;
+  }
+  .dropdown-btn:hover { 
+    background: #30363d; 
+    border-color: #484f58;
+  }
+  .dropdown-btn:focus {
+    outline: none;
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+  }
+  .dropdown-btn .arrow {
+    font-size: 10px;
+    transition: transform 0.2s ease;
+  }
+  .dropdown-btn.open .arrow {
+    transform: rotate(180deg);
+  }
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .dropdown-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  .dropdown-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    transition: background 0.1s ease;
+  }
+  .dropdown-item:hover {
+    background: #30363d;
+  }
+  .dropdown-item.selected {
+    background: #388bfd22;
+    color: #58a6ff;
+  }
+  .dropdown-item .check {
+    color: #58a6ff;
+    font-weight: bold;
+  }
   button {
     display: flex;
     align-items: center;
@@ -178,15 +297,37 @@ function buildWebview(
     pointer-events: none;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
+  
+  /* Animation for tree changes */
+  pre {
+    transition: opacity 0.15s ease;
+  }
+  pre.updating {
+    opacity: 0.5;
+  }
 </style>
 </head>
 <body>
 <div class="header">
   <div class="title">
     <span>📁</span>
-    <span>${folderName}</span>
+    <span id="headerFolderName">${folderName}</span>
   </div>
   <div class="controls">
+    <div class="dropdown-wrapper">
+      <button class="dropdown-btn" id="themeDropdownBtn">
+        <span>🎨 Icons: <span id="themeLabel">Emoji</span></span>
+        <span class="arrow">▼</span>
+      </button>
+      <div class="dropdown-menu" id="themeDropdown"></div>
+    </div>
+    <div class="dropdown-wrapper">
+      <button class="dropdown-btn" id="styleDropdownBtn">
+        <span>┣ Style: <span id="styleLabel">Classic</span></span>
+        <span class="arrow">▼</span>
+      </button>
+      <div class="dropdown-menu" id="styleDropdown"></div>
+    </div>
     <button class="btn-toggle active" id="toggleBtn">
       <span id="toggleIcon">✨</span>
       <span id="toggleText">Icons On</span>
@@ -202,27 +343,193 @@ function buildWebview(
     <div class="dot dot-red"></div>
     <div class="dot dot-yellow"></div>
     <div class="dot dot-green"></div>
-    <span class="tree-label" id="treeLabel">with icons</span>
+    <span class="tree-label" id="treeLabel">emoji icons • classic style</span>
   </div>
-  <pre id="treeOutput"><span class="root-line">📦${folderName}</span>
-${withIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</pre>
+  <pre id="treeOutput"></pre>
 </div>
 <div class="toast" id="toast">✅ Copied to clipboard!</div>
 
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
-  const dataIcons = ${JSON.stringify(withIconsFull)};
-  const dataPlain = ${JSON.stringify(noIconsFull)};
-  const iconHtml  = ${JSON.stringify(withIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"))};
-  const plainHtml = ${JSON.stringify(noIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"))};
-  const rootName  = ${JSON.stringify(folderName)};
+  
+  // Data from extension
+  const iconThemes = ${themesData};
+  const connectorStyles = ${stylesData};
+  const nodes = ${nodesData};
+  const folderName = ${folderNameData};
+  
+  // Current state
+  let currentTheme = 'emoji';
+  let currentStyle = 'classic';
   let iconsOn = true;
+  let openDropdown = null;
 
-  // ✅ Use addEventListener instead of inline onclick — inline handlers
-  // are blocked by the nonce-based CSP even though the script tag is allowed.
+  // Initialize dropdowns
+  function initDropdowns() {
+    const themeDropdown = document.getElementById('themeDropdown');
+    const styleDropdown = document.getElementById('styleDropdown');
+    
+    // Build theme dropdown items
+    Object.keys(iconThemes).forEach(key => {
+      const theme = iconThemes[key];
+      const item = document.createElement('div');
+      item.className = 'dropdown-item' + (key === currentTheme ? ' selected' : '');
+      item.dataset.value = key;
+      item.innerHTML = '<span>' + theme.name + '</span>' + (key === currentTheme ? '<span class="check">✓</span>' : '');
+      item.addEventListener('click', () => selectTheme(key));
+      themeDropdown.appendChild(item);
+    });
+    
+    // Build style dropdown items
+    Object.keys(connectorStyles).forEach(key => {
+      const style = connectorStyles[key];
+      const item = document.createElement('div');
+      item.className = 'dropdown-item' + (key === currentStyle ? ' selected' : '');
+      item.dataset.value = key;
+      item.innerHTML = '<span>' + style.name + '</span>' + (key === currentStyle ? '<span class="check">✓</span>' : '');
+      item.addEventListener('click', () => selectStyle(key));
+      styleDropdown.appendChild(item);
+    });
+  }
+
+  // Toggle dropdown
+  function toggleDropdown(dropdownId, btnId) {
+    const dropdown = document.getElementById(dropdownId);
+    const btn = document.getElementById(btnId);
+    
+    if (openDropdown === dropdownId) {
+      dropdown.classList.remove('open');
+      btn.classList.remove('open');
+      openDropdown = null;
+    } else {
+      // Close any open dropdown
+      if (openDropdown) {
+        document.getElementById(openDropdown).classList.remove('open');
+        document.getElementById(openDropdown.replace('Dropdown', 'DropdownBtn')).classList.remove('open');
+      }
+      dropdown.classList.add('open');
+      btn.classList.add('open');
+      openDropdown = dropdownId;
+    }
+  }
+
+  // Select theme
+  function selectTheme(key) {
+    currentTheme = key;
+    document.getElementById('themeLabel').textContent = iconThemes[key].name;
+    
+    // Update dropdown items
+    document.querySelectorAll('#themeDropdown .dropdown-item').forEach(item => {
+      const isSelected = item.dataset.value === key;
+      item.className = 'dropdown-item' + (isSelected ? ' selected' : '');
+      item.innerHTML = '<span>' + iconThemes[item.dataset.value].name + '</span>' + (isSelected ? '<span class="check">✓</span>' : '');
+    });
+    
+    closeDropdowns();
+    updateTree();
+  }
+
+  // Select style
+  function selectStyle(key) {
+    currentStyle = key;
+    document.getElementById('styleLabel').textContent = connectorStyles[key].name;
+    
+    // Update dropdown items
+    document.querySelectorAll('#styleDropdown .dropdown-item').forEach(item => {
+      const isSelected = item.dataset.value === key;
+      item.className = 'dropdown-item' + (isSelected ? ' selected' : '');
+      item.innerHTML = '<span>' + connectorStyles[item.dataset.value].name + '</span>' + (isSelected ? '<span class="check">✓</span>' : '');
+    });
+    
+    closeDropdowns();
+    updateTree();
+  }
+
+  // Close all dropdowns
+  function closeDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.dropdown-btn').forEach(b => b.classList.remove('open'));
+    openDropdown = null;
+  }
+
+  // Render tree
+  function renderTree(nodes, style, theme, withIcons, prefix = '') {
+    let out = '';
+    nodes.forEach((node, i) => {
+      const last = i === nodes.length - 1;
+      const branch = last ? style.last : style.branch;
+      const childPfx = last ? style.indent : style.vertical;
+      const icon = withIcons ? (node.isDir ? theme.folder : theme.file) : '';
+      const spacer = withIcons && icon ? ' ' : '';
+      const dirMarker = !withIcons && node.isDir ? '/' : '';
+      out += prefix + branch + icon + spacer + node.name + dirMarker + '\\n';
+      if (node.children && node.children.length) {
+        out += renderTree(node.children, style, theme, withIcons, prefix + childPfx);
+      }
+    });
+    return out;
+  }
+
+  // Update tree display
+  function updateTree() {
+    const pre = document.getElementById('treeOutput');
+    pre.classList.add('updating');
+    
+    setTimeout(() => {
+      const theme = iconThemes[currentTheme];
+      const style = connectorStyles[currentStyle];
+      const treeHtml = renderTree(nodes, style, theme, iconsOn);
+      
+      pre.innerHTML = '<span class="root-line">' + theme.root + folderName + '</span>\\n' + 
+        treeHtml.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+      
+      // Update toolbar label
+      const iconLabel = iconsOn ? iconThemes[currentTheme].name.toLowerCase() : 'no';
+      document.getElementById('treeLabel').textContent = iconLabel + ' icons • ' + connectorStyles[currentStyle].name.toLowerCase() + ' style';
+      
+      pre.classList.remove('updating');
+    }, 50);
+  }
+
+  // Toggle icons
+  function toggleIcons() {
+    iconsOn = !iconsOn;
+    const btn = document.getElementById('toggleBtn');
+    btn.classList.toggle('active', iconsOn);
+    document.getElementById('toggleIcon').textContent = iconsOn ? '✨' : '🚫';
+    document.getElementById('toggleText').textContent = iconsOn ? 'Icons On' : 'Icons Off';
+    updateTree();
+  }
+
+  // Copy tree
+  function copyTree() {
+    const theme = iconThemes[currentTheme];
+    const style = connectorStyles[currentStyle];
+    const treeText = theme.root + folderName + '\\n' + renderTree(nodes, style, theme, iconsOn);
+    vscode.postMessage({ type: 'copy', text: treeText });
+  }
+
+  // Event listeners
+  document.getElementById('themeDropdownBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDropdown('themeDropdown', 'themeDropdownBtn');
+  });
+  
+  document.getElementById('styleDropdownBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDropdown('styleDropdown', 'styleDropdownBtn');
+  });
+  
   document.getElementById('toggleBtn').addEventListener('click', toggleIcons);
   document.getElementById('copyBtn').addEventListener('click', copyTree);
-
+  
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.dropdown-wrapper')) {
+      closeDropdowns();
+    }
+  });
+  
   // Listen for copy confirmation from extension
   window.addEventListener('message', (event) => {
     if (event.data.type === 'copied') {
@@ -235,21 +542,9 @@ ${withIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</pr
     }
   });
 
-  function toggleIcons() {
-    iconsOn = !iconsOn;
-    const pre = document.getElementById('treeOutput');
-    const btn = document.getElementById('toggleBtn');
-    pre.innerHTML = '<span class="root-line">📦' + rootName + '</span>\\n' + (iconsOn ? iconHtml : plainHtml);
-    btn.classList.toggle('active', iconsOn);
-    document.getElementById('toggleIcon').textContent = iconsOn ? '✨' : '🚫';
-    document.getElementById('toggleText').textContent = iconsOn ? 'Icons On' : 'Icons Off';
-    document.getElementById('treeLabel').textContent = iconsOn ? 'with icons' : 'no icons';
-  }
-
-  function copyTree() {
-    // Send message to extension to copy via VS Code API (avoids clipboard issue in webview)
-    vscode.postMessage({ type: 'copy', text: iconsOn ? dataIcons : dataPlain });
-  }
+  // Initialize
+  initDropdowns();
+  updateTree();
 </script>
 </body>
 </html>`;
@@ -307,7 +602,7 @@ async function generate(uri: vscode.Uri | undefined, depth: number) {
     }
   );
 
-  buildWebview(panel, folderName, renderIcons(nodes), renderPlain(nodes));
+  buildWebview(panel, folderName, nodes);
 }
 
 export function activate(context: vscode.ExtensionContext) {

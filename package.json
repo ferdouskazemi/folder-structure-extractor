@@ -2,7 +2,7 @@
   "name": "folder-structure-extractor",
   "displayName": "Folder Structure Extractor",
   "description": "Right-click any folder to generate a beautiful tree structure",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "publisher": "FerdousKazemi",
   "icon": "icon.png",
   "engines": {
@@ -85,6 +85,33 @@
           "enum": ["clipboard", "newFile", "both"],
           "default": "both",
           "description": "Where to output the generated structure"
+        },
+        "folderStructure.iconTheme": {
+          "type": "string",
+          "enum": ["emoji", "minimal", "outline", "vscode", "none"],
+          "enumDescriptions": [
+            "Emoji icons (📂 📜 📦)",
+            "Minimal icons (📁 📄 🗃️)",
+            "Outline icons (📂 📄 🗂️)",
+            "VS Code style icons (📁 📃 📦)",
+            "No icons"
+          ],
+          "default": "emoji",
+          "description": "Icon theme for the folder tree"
+        },
+        "folderStructure.connectorStyle": {
+          "type": "string",
+          "enum": ["classic", "ascii", "dotted", "rounded", "bold", "none"],
+          "enumDescriptions": [
+            "Classic Unicode box-drawing characters (┣ ┗ ┃)",
+            "ASCII characters for maximum compatibility (|-- `-- |)",
+            "Dotted style connectors (│· ╰· │)",
+            "Rounded connectors (├─ ╰─ │)",
+            "Bold Unicode characters (┣ ┗ ┃)",
+            "No connectors, indentation only"
+          ],
+          "default": "classic",
+          "description": "Connector style for the folder tree branches"
         }
       }
     }
