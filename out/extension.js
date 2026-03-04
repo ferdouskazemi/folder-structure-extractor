@@ -301,7 +301,8 @@ async function generate(uri, depth) {
     const depthLabel = depth === 1 ? "Top Level" : `${depth} Levels`;
     const panel = vscode.window.createWebviewPanel("folderStructure", `📁 ${folderName} — ${depthLabel}`, vscode.ViewColumn.Beside, {
         enableScripts: true,
-        retainContextWhenHidden: true
+        retainContextWhenHidden: true,
+        localResourceRoots: []
     });
     buildWebview(panel, folderName, renderIcons(nodes), renderPlain(nodes));
 }

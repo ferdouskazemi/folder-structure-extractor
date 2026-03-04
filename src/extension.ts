@@ -282,7 +282,8 @@ async function generate(uri: vscode.Uri | undefined, depth: number) {
     vscode.ViewColumn.Beside,
     {
       enableScripts: true,
-      retainContextWhenHidden: true
+      retainContextWhenHidden: true,
+      localResourceRoots: []
     }
   );
 
