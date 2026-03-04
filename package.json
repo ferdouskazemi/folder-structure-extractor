@@ -1,6 +1,6 @@
 {
-  "name": "folder-structure-generator",
-  "displayName": "Folder Structure Generator",
+  "name": "folder-structure-extractor",
+  "displayName": "Folder Structure Extractor",
   "description": "Right-click any folder to generate a beautiful tree structure",
   "version": "1.0.0",
   "publisher": "FerdousKazemi",
