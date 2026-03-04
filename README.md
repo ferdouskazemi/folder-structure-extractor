@@ -24,37 +24,7 @@ Generate a beautiful folder tree directly from the VS Code Explorer — right-cl
 ## Output
 
 ```
-📦src
- ┣ 📂app
- ┃ ┣ 📂(auth)
- ┃ ┃ ┣ 📂login
- ┃ ┃ ┃ ┗ 📜page.tsx
- ┃ ┃ ┗ 📂register
- ┃ ┃ ┃ ┗ 📜page.tsx
- ┃ ┣ 📂(dashboard)
- ┃ ┃ ┣ 📂analytics
- ┃ ┃ ┃ ┗ 📜page.tsx
- ┃ ┃ ┗ 📂settings
- ┃ ┃ ┃ ┗ 📜page.tsx
- ┃ ┣ 📜layout.tsx
- ┃ ┗ 📜page.tsx
- ┣ 📂components
- ┃ ┣ 📂ui
- ┃ ┃ ┣ 📜button.tsx
- ┃ ┃ ┣ 📜card.tsx
- ┃ ┃ ┗ 📜input.tsx
- ┃ ┗ 📂shared
- ┃ ┃ ┣ 📜navbar.tsx
- ┃ ┃ ┗ 📜footer.tsx
- ┣ 📂lib
- ┃ ┣ 📜auth.ts
- ┃ ┣ 📜db.ts
- ┃ ┗ 📜utils.ts
- ┣ 📂hooks
- ┃ ┣ 📜useAuth.ts
- ┃ ┗ 📜useFetch.ts
- ┗ 📂types
- ┃ ┗ 📜index.ts
+![Output from Folder structure extractor](demo.png)
 ```
 
 ---
