@@ -24,7 +24,7 @@ Generate a beautiful folder tree directly from the VS Code Explorer — right-cl
 ## Output
 
 ```
-![Output from Folder structure extractor](demo.png)
+![Folder Structure Extractor Demo](https://raw.githubusercontent.com/ferdouskazemi/folder-structure-extractor/main/demo.png)
 ```
 
 ---
