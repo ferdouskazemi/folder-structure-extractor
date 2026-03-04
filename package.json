@@ -8,6 +8,10 @@
   },
   "categories": ["Other"],
   "activationEvents": [],
+  "repository": {
+  "type": "git",
+  "url": "https://github.com/YOUR_USERNAME/folder-structure-generator"
+},
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
