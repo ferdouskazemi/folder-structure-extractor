@@ -3,6 +3,7 @@
   "displayName": "Folder Structure Generator",
   "description": "Right-click any folder to generate a beautiful tree structure",
   "version": "1.0.0",
+  "publisher": "FerdousKazemi",
   "engines": {
     "vscode": "^1.109.0"
   },
