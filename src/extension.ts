@@ -65,12 +65,27 @@ function renderPlain(nodes: TreeNode[], prefix = ""): string {
   return out;
 }
 
+// Generates a cryptographically random nonce for CSP — required by VS Code's
+// recommended webview pattern so the service worker registers correctly on
+// all machines / VS Code versions (avoids the InvalidStateError).
+function getNonce(): string {
+  let text = "";
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
+
 function buildWebview(
   panel: vscode.WebviewPanel,
   folderName: string,
   withIcons: string,
   noIcons: string
 ) {
+  const csp   = panel.webview.cspSource;
+  const nonce = getNonce(); // unique per panel open
+
   const withIconsFull = "📦" + folderName + "\n" + withIcons;
   const noIconsFull   = "📦" + folderName + "\n" + noIcons;
 
@@ -79,7 +94,7 @@ function buildWebview(
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' ${csp}; style-src 'unsafe-inline' ${csp}; connect-src ${csp};">
 <title>Folder Structure</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -172,11 +187,11 @@ function buildWebview(
     <span>${folderName}</span>
   </div>
   <div class="controls">
-    <button class="btn-toggle active" id="toggleBtn" onclick="toggleIcons()">
+    <button class="btn-toggle active" id="toggleBtn">
       <span id="toggleIcon">✨</span>
       <span id="toggleText">Icons On</span>
     </button>
-    <button class="btn-copy" id="copyBtn" onclick="copyTree()">
+    <button class="btn-copy" id="copyBtn">
       <span>📋</span>
       <span>Copy</span>
     </button>
@@ -194,7 +209,7 @@ ${withIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</pr
 </div>
 <div class="toast" id="toast">✅ Copied to clipboard!</div>
 
-<script>
+<script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const dataIcons = ${JSON.stringify(withIconsFull)};
   const dataPlain = ${JSON.stringify(noIconsFull)};
@@ -202,6 +217,11 @@ ${withIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</pr
   const plainHtml = ${JSON.stringify(noIcons.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"))};
   const rootName  = ${JSON.stringify(folderName)};
   let iconsOn = true;
+
+  // ✅ Use addEventListener instead of inline onclick — inline handlers
+  // are blocked by the nonce-based CSP even though the script tag is allowed.
+  document.getElementById('toggleBtn').addEventListener('click', toggleIcons);
+  document.getElementById('copyBtn').addEventListener('click', copyTree);
 
   // Listen for copy confirmation from extension
   window.addEventListener('message', (event) => {
